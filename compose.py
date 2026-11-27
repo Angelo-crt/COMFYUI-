@@ -16,6 +16,16 @@ mask[int(h*.52):int(h*.62),int(w*.12):int(w*.2)]=cv2.GC_BGD
 cv2.grabCut(ch,mask,None,np.zeros((1,65)),np.zeros((1,65)),6,cv2.GC_INIT_WITH_MASK)
 fg=np.where((mask==1)|(mask==3),255,0).astype(np.uint8)
 fg=cv2.morphologyEx(fg,cv2.MORPH_CLOSE,np.ones((15,15),np.uint8))
+ff=fg.copy(); pad=cv2.copyMakeBorder(ff,1,1,1,1,cv2.BORDER_CONSTANT,value=0)
+fm=np.zeros((h+4,w+4),np.uint8); cv2.floodFill(pad,fm,(0,0),255)
+holes=cv2.bitwise_not(pad[1:-1,1:-1]); fg=cv2.bitwise_or(fg,holes)
+# cabeza: envolvente convexa solo en la zona del pelo
+r=int(h*.14); top=(fg[:r]>127).astype(np.uint8)
+n,lab,stt,_=cv2.connectedComponentsWithStats(top)
+if n>1:
+    k=1+np.argmax(stt[1:,cv2.CC_STAT_AREA]); pts=cv2.findNonZero((lab==k).astype(np.uint8))
+    hull=cv2.convexHull(pts); tm=np.zeros_like(top); cv2.fillConvexPoly(tm,hull,1)
+    fg[:r]=np.maximum(fg[:r],tm*255)
 fg=cv2.GaussianBlur(fg,(5,5),0)
 # --- estilo tinta: gris -> alto contraste, tono marfil
 g=cv2.cvtColor(ch,cv2.COLOR_BGR2GRAY).astype(np.float32)
